@@ -18,8 +18,7 @@ def ask_chatgpt(prompt):
         messages=[
             {"role": "system", "content": "Bạn là một lập trình viên Python giỏi, chỉ trả lời bằng code chạy được và có hàm main. Bỏ ```python ```` trong phần trả lời và nếu chú thích thì hãy thêm # trước đó, không cần ví dụ"},
             {"role": "user", "content": prompt}
-        ],
-        temperature=0.95
+        ]
     )
     code = response.choices[0].message.content
     return code
