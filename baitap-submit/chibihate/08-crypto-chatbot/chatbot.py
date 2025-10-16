@@ -1,12 +1,13 @@
-from dotenv import load_dotenv
-from openai import OpenAI
 import os
-import inspect
-from pydantic import TypeAdapter
+import json
+from openai import OpenAI
+from dotenv import load_dotenv
 import requests
 import yfinance as yf
-import json
+import inspect
+from pydantic import TypeAdapter
 
+load_dotenv()
 
 def get_symbol(company: str) -> str:
     """
@@ -46,6 +47,10 @@ def get_stock_price(symbol: str):
         "volume": latest["Volume"]
     }
 
+FUNCTION_MAP = {
+    "get_symbol": get_symbol,
+    "get_stock_price": get_stock_price
+}
 
 tools = [
     {
@@ -66,21 +71,15 @@ tools = [
     }
 ]
 
-FUNCTION_MAP = {
-    "get_symbol": get_symbol,
-    "get_stock_price": get_stock_price
-}
-
-
-load_dotenv()
-# Đọc từ file .env cùng thư mục, nhưng đừng commit nha!
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-client = OpenAI(api_key=OPENAI_API_KEY)
-
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.getenv("GROQ_API_KEY"),
+)
 
 def get_completion(messages):
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="openai/gpt-oss-20b",
         messages=messages,
         tools=tools,
         # Để temparature=0 để kết quả ổn định sau nhiều lần chạy
@@ -88,44 +87,44 @@ def get_completion(messages):
     )
     return response
 
-
-# Bắt đầu làm bài tập từ line này!
-
-question = "Giá cổ phiếu hiện tại của Vinfast là bao nhiêu?"
-
 messages = [
-    {"role": "system", "content": "You are a helpful customer support assistant. Use the supplied tools to assist the user."},
-    {"role": "user", "content": question}
+    {"role": "system", "content": "You are a helpful customer support assistant. Use the supplied tools to assist the user. You're analytical and funny guys. You answer by Vietnamese and use USD is main currency"},
 ]
 
-response = get_completion(messages)
-first_choice = response.choices[0]
-finish_reason = first_choice.finish_reason
+while True:
+    question = input("Có câu hỏi gì về không bạn ơi: ")
 
-# Loop cho tới khi model báo stop và đưa ra kết quả
-while finish_reason != "stop":
-    tool_call = first_choice.message.tool_calls[0]
+    messages.append(
+        {"role": "user", "content": question}
+    )
 
-    tool_call_function = tool_call.function
-    tool_call_arguments = json.loads(tool_call_function.arguments)
-
-    tool_function = FUNCTION_MAP[tool_call_function.name]
-    result = tool_function(**tool_call_arguments)
-
-    messages.append(first_choice.message)
-    messages.append({
-        "role": "tool",
-        "tool_call_id": tool_call.id,
-        "name": tool_call_function.name,
-        "content": json.dumps({"result": result})
-    })
-
-    print(messages)
-
-    # Chờ kết quả từ LLM
     response = get_completion(messages)
     first_choice = response.choices[0]
     finish_reason = first_choice.finish_reason
 
-# In ra kết quả sau khi đã thoát khỏi vòng lặp
-print(first_choice.message.content)
+    while finish_reason != "stop":
+        tool_call = first_choice.message.tool_calls[0]
+
+        tool_call_function = tool_call.function
+        tool_call_arguments = json.loads(tool_call_function.arguments)
+
+        tool_function = FUNCTION_MAP[tool_call_function.name]
+        result = tool_function(**tool_call_arguments)
+
+        messages.append(first_choice.message)
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "name": tool_call_function.name,
+            "content": json.dumps(result)
+        })
+
+        response = get_completion(messages)
+        first_choice = response.choices[0]
+        finish_reason = first_choice.finish_reason
+
+    print(f"Bot answer: {first_choice.message.content}")
+    messages.append(
+        {"role": "assistant"
+        , "content": first_choice.message.content}
+    )
