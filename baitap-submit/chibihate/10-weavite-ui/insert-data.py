@@ -32,12 +32,11 @@ COLLECTION_NAME = "BookCollection"
 
 def create_collection():
     # Tạo schema cho collection
-    movie_collection = vector_db_client.collections.create(
+    book_collection = vector_db_client.collections.create(
         name=COLLECTION_NAME,
         # Sử dụng model transformers để tạo vector
         vectorizer_config=Configure.Vectorizer.text2vec_transformers(),
         properties=[
-            # Tiêu đề phim: text, được vector hóa và chuyển thành chữ thường
             Property(name="title", data_type=DataType.TEXT,
                      vectorize_property_name=True, tokenization=Tokenization.LOWERCASE),
             Property(name="author", data_type=DataType.TEXT, tokenization=Tokenization.LOWERCASE),
@@ -72,7 +71,7 @@ def create_collection():
     print(f"Inserting data to Vector DB. Total records: {total_records}")
 
     # Import dữ liệu vào DB theo batch
-    with movie_collection.batch.dynamic() as batch:
+    with book_collection.batch.dynamic() as batch:
         for data_row in sent_to_vector_db:
             print(f"Inserting: {data_row['title']}")
             batch.add_object(properties=data_row)

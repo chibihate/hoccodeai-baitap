@@ -39,11 +39,14 @@ HEADERS = [
     "title", "author", "genre", "description", "grade", "date"
 ]
 
-with gr.Blocks(title="Tìm kiếm phim với Vector Database") as interface:
-    query = gr.Textbox(label="Tìm kiếm phim", placeholder="Tên, diễn viên, thể loại,...")
+with gr.Blocks(title="Tìm kiếm sách với Vector Database") as interface:
+    query = gr.Textbox(label="Tìm kiếm sách", placeholder="Tên, tác giả, thể loại,...")
     search = gr.Button(value="Search")
     results = gr.Dataframe(headers=HEADERS, label="DANH SÁCH KẾT QUẢ")
 
     search.click(fn=search_book, inputs=query, outputs=results)
 
 interface.queue().launch()
+
+# Đóng kết nối
+vector_db_client.close()
